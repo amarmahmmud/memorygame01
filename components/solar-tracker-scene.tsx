@@ -5,11 +5,10 @@ import { OrbitControls } from "@react-three/drei"
 import { useState, useRef, useMemo, useCallback } from "react"
 import * as THREE from "three"
 
-// Constants matching the HTML exactly (scaled by 0.01)
-const PANEL_BASE_Y = 1.6 // 160 in original
-const PANEL_LENGTH = 1.0 // pL = 100 in original
+const PANEL_BASE_Y = 1.05 
+const PANEL_LENGTH = 1.0 
+const LEG_HEIGHT = 1.5 
 
-// Material colors - Clean/Modern style
 const COLORS = {
   basePlate: "#2a2a35",
   motor: "#3d3d4a",
@@ -45,7 +44,6 @@ interface TrackerState {
   cleaningProgress: number
 }
 
-// Bolt component
 function Bolt({ position, rotation = [0, 0, 0] as [number, number, number], scale = 1 }: {
   position: [number, number, number]
   rotation?: [number, number, number]
@@ -53,12 +51,10 @@ function Bolt({ position, rotation = [0, 0, 0] as [number, number, number], scal
 }) {
   return (
     <group position={position} rotation={rotation} scale={scale}>
-      {/* Bolt head */}
       <mesh position={[0, 0.015, 0]}>
         <cylinderGeometry args={[0.025, 0.025, 0.02, 6]} />
         <meshStandardMaterial color={COLORS.bolt} metalness={0.7} roughness={0.3} />
       </mesh>
-      {/* Bolt shaft */}
       <mesh position={[0, 0, 0]}>
         <cylinderGeometry args={[0.012, 0.012, 0.03, 8]} />
         <meshStandardMaterial color={COLORS.bolt} metalness={0.6} roughness={0.4} />
@@ -67,7 +63,6 @@ function Bolt({ position, rotation = [0, 0, 0] as [number, number, number], scal
   )
 }
 
-// Cable component - curved wire routing
 function Cable({ start, end, color = COLORS.cable, segments = 8 }: {
   start: [number, number, number]
   end: [number, number, number]
@@ -99,7 +94,6 @@ function Cable({ start, end, color = COLORS.cable, segments = 8 }: {
   )
 }
 
-// Bearing housing component
 function BearingHousing({ position, rotation = [0, 0, 0] as [number, number, number], innerRadius = 0.05, outerRadius = 0.1, height = 0.06 }: {
   position: [number, number, number]
   rotation?: [number, number, number]
@@ -109,22 +103,18 @@ function BearingHousing({ position, rotation = [0, 0, 0] as [number, number, num
 }) {
   return (
     <group position={position} rotation={rotation}>
-      {/* Outer housing */}
       <mesh>
         <cylinderGeometry args={[outerRadius, outerRadius * 1.1, height, 16]} />
         <meshStandardMaterial color={COLORS.bearing} metalness={0.5} roughness={0.4} />
       </mesh>
-      {/* Inner race */}
       <mesh position={[0, height * 0.1, 0]}>
         <torusGeometry args={[(innerRadius + outerRadius) / 2, 0.012, 8, 24]} />
         <meshStandardMaterial color={COLORS.bearingInner} metalness={0.7} roughness={0.2} />
       </mesh>
-      {/* Mounting flange */}
       <mesh position={[0, -height / 2 + 0.005, 0]}>
         <cylinderGeometry args={[outerRadius * 1.3, outerRadius * 1.3, 0.015, 16]} />
         <meshStandardMaterial color={COLORS.bearing} metalness={0.5} roughness={0.4} />
       </mesh>
-      {/* Mounting bolts on flange */}
       {[0, 90, 180, 270].map((angle, i) => {
         const rad = (angle * Math.PI) / 180
         const boltR = outerRadius * 1.15
@@ -140,7 +130,6 @@ function BearingHousing({ position, rotation = [0, 0, 0] as [number, number, num
   )
 }
 
-// Motor with cooling fins and mounting
 function Motor({ position, radius, height, horizontal = false }: {
   position: [number, number, number]
   radius: number
@@ -151,17 +140,14 @@ function Motor({ position, radius, height, horizontal = false }: {
 
   return (
     <group position={position} rotation={rotation}>
-      {/* Main motor body */}
       <mesh position={[0, height / 2, 0]}>
         <cylinderGeometry args={[radius, radius, height, 16]} />
         <meshStandardMaterial color={COLORS.motor} metalness={0.4} roughness={0.6} />
       </mesh>
-      {/* End cap */}
       <mesh position={[0, height + 0.02, 0]}>
         <cylinderGeometry args={[radius * 0.9, radius * 0.9, 0.04, 16]} />
         <meshStandardMaterial color={COLORS.motorAccent} metalness={0.5} roughness={0.4} />
       </mesh>
-      {/* Cooling fins */}
       {[0, 60, 120, 180, 240, 300].map((angle, i) => {
         const rad = (angle * Math.PI) / 180
         return (
@@ -175,12 +161,10 @@ function Motor({ position, radius, height, horizontal = false }: {
           </mesh>
         )
       })}
-      {/* Mounting base */}
       <mesh position={[0, 0.01, 0]}>
         <cylinderGeometry args={[radius * 1.15, radius * 1.15, 0.025, 16]} />
         <meshStandardMaterial color={COLORS.motorAccent} metalness={0.4} roughness={0.5} />
       </mesh>
-      {/* Mounting bolts */}
       {[45, 135, 225, 315].map((angle, i) => {
         const rad = (angle * Math.PI) / 180
         const boltR = radius * 1.05
@@ -196,39 +180,6 @@ function Motor({ position, radius, height, horizontal = false }: {
   )
 }
 
-// Battery with terminals
-function Battery({ position }: { position: [number, number, number] }) {
-  return (
-    <group position={position}>
-      {/* Battery body */}
-      <mesh position={[0, 0.125, 0]}>
-        <boxGeometry args={[0.35, 0.25, 0.3]} />
-        <meshStandardMaterial color={COLORS.battery} roughness={0.7} />
-      </mesh>
-      {/* Positive terminal */}
-      <mesh position={[0.1, 0.26, 0]}>
-        <cylinderGeometry args={[0.025, 0.025, 0.03, 8]} />
-        <meshStandardMaterial color={COLORS.batteryTerminal} metalness={0.8} roughness={0.2} />
-      </mesh>
-      {/* Negative terminal */}
-      <mesh position={[-0.1, 0.26, 0]}>
-        <cylinderGeometry args={[0.025, 0.025, 0.03, 8]} />
-        <meshStandardMaterial color="#3a3a3a" metalness={0.7} roughness={0.3} />
-      </mesh>
-      {/* Terminal labels */}
-      <mesh position={[0.1, 0.28, 0]}>
-        <boxGeometry args={[0.03, 0.005, 0.03]} />
-        <meshStandardMaterial color="#cc3333" />
-      </mesh>
-      <mesh position={[-0.1, 0.28, 0]}>
-        <boxGeometry args={[0.03, 0.005, 0.03]} />
-        <meshStandardMaterial color="#333333" />
-      </mesh>
-    </group>
-  )
-}
-
-// LDR Sensor
 function LDRSensor({ position, intensity }: {
   position: [number, number, number]
   intensity: number
@@ -239,12 +190,10 @@ function LDRSensor({ position, intensity }: {
 
   return (
     <group position={position}>
-      {/* Sensor housing */}
       <mesh>
         <cylinderGeometry args={[0.04, 0.035, 0.03, 8]} />
         <meshStandardMaterial color="#2a2a2a" roughness={0.6} />
       </mesh>
-      {/* Sensor lens */}
       <mesh position={[0, 0.02, 0]}>
         <sphereGeometry args={[0.03, 12, 12, 0, Math.PI * 2, 0, Math.PI / 2]} />
         <meshStandardMaterial color={color} transparent opacity={0.9} emissive={color} emissiveIntensity={0.3} />
@@ -253,7 +202,6 @@ function LDRSensor({ position, intensity }: {
   )
 }
 
-// Sun component
 function Sun({ azimuth, elevation }: { azimuth: number; elevation: number }) {
   const sunDist = 5
   const radAz = (azimuth * Math.PI) / 180
@@ -278,7 +226,6 @@ function Sun({ azimuth, elevation }: { azimuth: number; elevation: number }) {
   )
 }
 
-// Solar Panel with cells
 function SolarPanel({ tilt, dustLevel, isCleaning, cleaningProgress }: {
   tilt: number
   dustLevel: number
@@ -288,7 +235,6 @@ function SolarPanel({ tilt, dustLevel, isCleaning, cleaningProgress }: {
   const tRad = (tilt * Math.PI) / 180
   const pL = PANEL_LENGTH
 
-  // Panel geometry - matches HTML exactly
   const midX = Math.cos(tRad) * pL
   const midY = Math.sin(tRad) * pL
   const topX = Math.cos(tRad) * (pL * 2)
@@ -296,52 +242,39 @@ function SolarPanel({ tilt, dustLevel, isCleaning, cleaningProgress }: {
   const extX = Math.cos(tRad) * (-pL * 0.5)
   const extY = Math.sin(tRad) * (-pL * 0.5)
 
-  // Brush position
   const bTravel = isCleaning ? cleaningProgress * 2 : 0
   const bX = Math.cos(tRad) * (pL * bTravel)
   const bY = Math.sin(tRad) * (pL * bTravel)
 
-  // Panel normal direction for cell alignment
-  const normalX = -Math.sin(tRad)
-  const normalY = Math.cos(tRad)
-
   return (
     <group position={[0, PANEL_BASE_Y, 0]}>
-      {/* Main panel frame - aluminum extrusion style */}
       <group>
-        {/* Left rail */}
         <mesh position={[(extX + topX) / 2, (extY + topY) / 2, -0.58]} rotation={[0, 0, tRad]}>
           <boxGeometry args={[pL * 2.5, 0.04, 0.04]} />
           <meshStandardMaterial color={COLORS.panelFrame} metalness={0.6} roughness={0.3} />
         </mesh>
-        {/* Right rail */}
         <mesh position={[(extX + topX) / 2, (extY + topY) / 2, 0.58]} rotation={[0, 0, tRad]}>
           <boxGeometry args={[pL * 2.5, 0.04, 0.04]} />
           <meshStandardMaterial color={COLORS.panelFrame} metalness={0.6} roughness={0.3} />
         </mesh>
-        {/* Bottom cross bar */}
         <mesh position={[extX, extY, 0]} rotation={[0, 0, tRad]}>
           <boxGeometry args={[0.04, 0.04, 1.2]} />
           <meshStandardMaterial color={COLORS.panelFrame} metalness={0.6} roughness={0.3} />
         </mesh>
-        {/* Middle cross bar */}
         <mesh position={[midX, midY, 0]} rotation={[0, 0, tRad]}>
           <boxGeometry args={[0.04, 0.04, 1.2]} />
           <meshStandardMaterial color={COLORS.panelFrame} metalness={0.6} roughness={0.3} />
         </mesh>
-        {/* Top cross bar */}
         <mesh position={[topX, topY, 0]} rotation={[0, 0, tRad]}>
           <boxGeometry args={[0.04, 0.04, 1.2]} />
           <meshStandardMaterial color={COLORS.panelFrame} metalness={0.6} roughness={0.3} />
         </mesh>
-        {/* Pivot cross bar */}
         <mesh position={[0, 0, 0]} rotation={[0, 0, tRad]}>
           <boxGeometry args={[0.05, 0.05, 1.2]} />
           <meshStandardMaterial color="#ffffff" metalness={0.5} roughness={0.4} />
         </mesh>
       </group>
 
-      {/* Panel surface with solar cells */}
       <mesh
         position={[(topX + extX * 0.5) / 2, (topY + extY * 0.5) / 2, 0]}
         rotation={[0, 0, tRad]}
@@ -350,7 +283,6 @@ function SolarPanel({ tilt, dustLevel, isCleaning, cleaningProgress }: {
         <meshStandardMaterial color={COLORS.panelSurface} metalness={0.3} roughness={0.4} />
       </mesh>
 
-      {/* Solar cells grid */}
       {Array.from({ length: 6 }).map((_, row) =>
         Array.from({ length: 3 }).map((_, col) => {
           const cellX = extX * 0.3 + (row + 0.5) * (pL * 2.2 / 6) * Math.cos(tRad)
@@ -369,7 +301,6 @@ function SolarPanel({ tilt, dustLevel, isCleaning, cleaningProgress }: {
         })
       )}
 
-      {/* Dust layer */}
       {dustLevel > 10 && !isCleaning && (
         <mesh
           position={[(topX + extX * 0.5) / 2, (topY + extY * 0.5) / 2 + 0.02, 0]}
@@ -384,22 +315,18 @@ function SolarPanel({ tilt, dustLevel, isCleaning, cleaningProgress }: {
         </mesh>
       )}
 
-      {/* Brush motor - at extension position */}
       <group position={[extX - 0.15, extY, 0]} rotation={[0, 0, tRad]}>
         <mesh rotation={[Math.PI / 2, 0, 0]}>
           <cylinderGeometry args={[0.08, 0.08, 0.15, 12]} />
           <meshStandardMaterial color={COLORS.brushMotor} metalness={0.4} roughness={0.5} />
         </mesh>
-        {/* Motor mount */}
         <mesh position={[0, 0, 0.08]}>
           <boxGeometry args={[0.1, 0.08, 0.02]} />
           <meshStandardMaterial color={COLORS.panelFrame} metalness={0.5} roughness={0.4} />
         </mesh>
       </group>
 
-      {/* Cleaning brush */}
       <group position={[bX, bY, 0]} rotation={[0, 0, tRad]}>
-        {/* Brush body */}
         <mesh rotation={[Math.PI / 2, 0, 0]}>
           <cylinderGeometry args={[0.04, 0.04, 1.1, 8]} />
           <meshStandardMaterial
@@ -408,7 +335,6 @@ function SolarPanel({ tilt, dustLevel, isCleaning, cleaningProgress }: {
             emissiveIntensity={isCleaning ? 0.3 : 0}
           />
         </mesh>
-        {/* Brush bristles */}
         {Array.from({ length: 8 }).map((_, i) => {
           const angle = (i * Math.PI * 2) / 8
           return (
@@ -424,7 +350,6 @@ function SolarPanel({ tilt, dustLevel, isCleaning, cleaningProgress }: {
         })}
       </group>
 
-      {/* Drive rod from motor to brush */}
       <mesh position={[(extX + bX) / 2, (extY + bY) / 2, 0]} rotation={[0, 0, tRad]}>
         <boxGeometry args={[Math.max(0.05, Math.sqrt((bX - extX) ** 2 + (bY - extY) ** 2)), 0.015, 0.015]} />
         <meshStandardMaterial color="#44aa44" metalness={0.5} roughness={0.4} />
@@ -433,19 +358,18 @@ function SolarPanel({ tilt, dustLevel, isCleaning, cleaningProgress }: {
   )
 }
 
-// Main Solar Tracker 3D component
 function SolarTracker3D({ state }: { state: TrackerState }) {
   const { pan, tilt, dustLevel, isCleaning, cleaningProgress, sunAzimuth, sunElevation } = state
 
+  const pivotX = -1.3
   const tRad = (tilt * Math.PI) / 180
   const pL = PANEL_LENGTH
-  const midX = Math.cos(tRad) * pL
+  
+  const midX = pivotX + Math.cos(tRad) * pL
   const midY = PANEL_BASE_Y + Math.sin(tRad) * pL
-
-  // Worm gear position (exactly like HTML)
-  const wormX = 1.1 - (tilt * 0.011)
-
-  // Sun direction for LDR intensity
+  const topX = pivotX + Math.cos(tRad) * (pL * 2)
+  const topY = PANEL_BASE_Y + Math.sin(tRad) * (pL * 2)
+  
   const sunRadAz = (sunAzimuth * Math.PI) / 180
   const sunRadEl = (sunElevation * Math.PI) / 180
   const sunDir = {
@@ -454,7 +378,6 @@ function SolarTracker3D({ state }: { state: TrackerState }) {
     z: Math.cos(sunRadEl) * Math.cos(sunRadAz)
   }
 
-  // Calculate LDR intensities
   const getLDRIntensity = useCallback((sensorType: string) => {
     const angleOffset = (30 * Math.PI) / 180
     let localNormal: { x: number; y: number; z: number }
@@ -499,7 +422,6 @@ function SolarTracker3D({ state }: { state: TrackerState }) {
     const dot = worldNormal.x * sunDir.x + worldNormal.y * sunDir.y + worldNormal.z * sunDir.z
     let intensity = Math.max(0, dot)
     intensity *= 1 - dustLevel / 150
-
     return intensity
   }, [tRad, pan, sunDir, dustLevel])
 
@@ -508,161 +430,168 @@ function SolarTracker3D({ state }: { state: TrackerState }) {
   const leftInt = getLDRIntensity('left')
   const rightInt = getLDRIntensity('right')
 
-  const topX = Math.cos(tRad) * (pL * 2)
-  const topY = PANEL_BASE_Y + Math.sin(tRad) * (pL * 2)
-
   return (
     <group>
-      {/* Sun */}
       <Sun azimuth={sunAzimuth} elevation={sunElevation} />
 
-      {/* ========== STATIC BASE (not rotating) ========== */}
       <group>
-        {/* Base plate */}
-        <mesh position={[0, -0.025, 0]}>
-          <boxGeometry args={[2.2, 0.05, 2.2]} />
-          <meshStandardMaterial color={COLORS.basePlate} metalness={0.3} roughness={0.7} />
+        <mesh position={[0, LEG_HEIGHT - 0.2, 0]}>
+          <cylinderGeometry args={[0.5, 0.5, 0.4, 16]} />
+          <meshStandardMaterial color={COLORS.motorAccent} metalness={0.6} roughness={0.4} />
         </mesh>
-
-        {/* Corner mounting bolts */}
-        {[[-0.95, -0.95], [0.95, -0.95], [-0.95, 0.95], [0.95, 0.95]].map(([x, z], i) => (
-          <Bolt key={i} position={[x, 0, z]} scale={0.8} />
-        ))}
-
-        {/* Base motor */}
-        <Motor position={[0, 0, 0]} radius={0.4} height={0.45} />
-
-        {/* Motor output shaft (to Y=0.9) */}
-        <mesh position={[0, 0.65, 0]}>
-          <cylinderGeometry args={[0.08, 0.08, 0.35, 12]} />
-          <meshStandardMaterial color={COLORS.shaft} metalness={0.6} roughness={0.3} />
-        </mesh>
-
-        {/* Batteries at corners */}
-        <Battery position={[-0.7, 0, -0.7]} />
-        <Battery position={[0.7, 0, -0.7]} />
-        <Battery position={[-0.7, 0, 0.7]} />
-        <Battery position={[0.7, 0, 0.7]} />
-
-        {/* Cable routing from batteries to motor */}
-        <Cable start={[-0.6, 0.26, -0.7]} end={[-0.2, 0.1, -0.2]} />
-        <Cable start={[0.6, 0.26, -0.7]} end={[0.2, 0.1, -0.2]} />
-        <Cable start={[-0.6, 0.26, 0.7]} end={[-0.2, 0.1, 0.2]} />
-        <Cable start={[0.6, 0.26, 0.7]} end={[0.2, 0.1, 0.2]} />
+        {[45, 135, 225, 315].map((angle, i) => {
+          const rad = (angle * Math.PI) / 180;
+          return <Bolt key={i} position={[Math.cos(rad) * 0.4, LEG_HEIGHT, Math.sin(rad) * 0.4]} scale={1.2} />
+        })}
+        {[0, 90, 180, 270].map((angle, i) => {
+          const rad = (angle * Math.PI) / 180;
+          const outwardAngle = 25 * Math.PI / 180;
+          const legLen = (LEG_HEIGHT - 0.2) / Math.cos(outwardAngle);
+          return (
+            <group key={i} position={[0, LEG_HEIGHT - 0.2, 0]} rotation={[0, -rad, 0]}>
+              <mesh position={[0.4, 0, 0]}>
+                <boxGeometry args={[0.4, 0.25, 0.25]} />
+                <meshStandardMaterial color={COLORS.panelFrame} metalness={0.6} roughness={0.4} />
+              </mesh>
+              <mesh position={[0.6 + Math.sin(outwardAngle) * (legLen / 2), -Math.cos(outwardAngle) * (legLen / 2), 0]} rotation={[0, 0, outwardAngle]}>
+                <boxGeometry args={[0.18, legLen, 0.18]} />
+                <meshStandardMaterial color={COLORS.chassis} metalness={0.5} roughness={0.6} />
+              </mesh>
+              <mesh position={[0.6 + Math.sin(outwardAngle) * legLen, -(LEG_HEIGHT - 0.2) + 0.05, 0]}>
+                <boxGeometry args={[0.4, 0.1, 0.3]} />
+                <meshStandardMaterial color="#1a1a1a" roughness={0.9} />
+              </mesh>
+            </group>
+          )
+        })}
       </group>
 
-      {/* ========== ROTATING ASSEMBLY (rotates with pan) ========== */}
-      <group rotation={[0, (pan * Math.PI) / 180, 0]}>
-        {/* Slew bearing at Y=0.85 */}
-        <BearingHousing position={[0, 0.85, 0]} innerRadius={0.1} outerRadius={0.18} height={0.08} />
+      <group position={[0, LEG_HEIGHT, 0]}>
+        <group rotation={[0, (pan * Math.PI) / 180, 0]} position={[0, -0.85, 0]}>
+          <BearingHousing position={[0, 0.85, 0]} innerRadius={0.1} outerRadius={0.18} height={0.08} />
 
-        {/* Rotating chassis plate */}
-        <mesh position={[0, 0.92, 0]}>
-          <boxGeometry args={[2.8, 0.04, 1.0]} />
-          <meshStandardMaterial color={COLORS.chassis} metalness={0.4} roughness={0.6} />
-        </mesh>
-
-        {/* Chassis cross members */}
-        <mesh position={[0, 0.92, -0.35]}>
-          <boxGeometry args={[2.6, 0.03, 0.06]} />
-          <meshStandardMaterial color={COLORS.chassis} metalness={0.4} roughness={0.5} />
-        </mesh>
-        <mesh position={[0, 0.92, 0.35]}>
-          <boxGeometry args={[2.6, 0.03, 0.06]} />
-          <meshStandardMaterial color={COLORS.chassis} metalness={0.4} roughness={0.5} />
-        </mesh>
-
-        {/* Elevation bearing pillar - left */}
-        <group position={[0, 0.94, -0.4]}>
-          <mesh position={[0, 0.3, 0]}>
-            <boxGeometry args={[0.12, 0.6, 0.08]} />
+          <mesh position={[0, 0.92, 0]}>
+            <boxGeometry args={[2.8, 0.04, 1.0]} />
             <meshStandardMaterial color={COLORS.chassis} metalness={0.4} roughness={0.6} />
           </mesh>
-          <BearingHousing position={[0, 0.6, 0]} rotation={[Math.PI / 2, 0, 0]} innerRadius={0.04} outerRadius={0.07} height={0.05} />
-        </group>
 
-        {/* Elevation bearing pillar - right */}
-        <group position={[0, 0.94, 0.4]}>
-          <mesh position={[0, 0.3, 0]}>
-            <boxGeometry args={[0.12, 0.6, 0.08]} />
-            <meshStandardMaterial color={COLORS.chassis} metalness={0.4} roughness={0.6} />
+          <mesh position={[0, 0.92, -0.35]}>
+            <boxGeometry args={[2.6, 0.03, 0.06]} />
+            <meshStandardMaterial color={COLORS.chassis} metalness={0.4} roughness={0.5} />
           </mesh>
-          <BearingHousing position={[0, 0.6, 0]} rotation={[Math.PI / 2, 0, 0]} innerRadius={0.04} outerRadius={0.07} height={0.05} />
-        </group>
-
-        {/* Elevation shaft (horizontal pivot axis at Y=1.54-1.6) */}
-        <mesh position={[0, PANEL_BASE_Y - 0.06, 0]} rotation={[Math.PI / 2, 0, 0]}>
-          <cylinderGeometry args={[0.045, 0.045, 0.9, 12]} />
-          <meshStandardMaterial color={COLORS.elevationShaft} metalness={0.6} roughness={0.3} />
-        </mesh>
-
-        {/* Worm gear motor (at right side) */}
-        <Motor position={[1.2, 0.85, 0]} radius={0.15} height={0.2} horizontal />
-        <mesh position={[1.25, 0.95, 0]} rotation={[0, 0, Math.PI / 2]}>
-          <cylinderGeometry args={[0.04, 0.04, 0.1, 8]} />
-          <meshStandardMaterial color={COLORS.shaft} metalness={0.6} roughness={0.3} />
-        </mesh>
-
-        {/* Worm gear threaded rod */}
-        <mesh position={[0.05, 0.95, 0]} rotation={[0, 0, Math.PI / 2]}>
-          <cylinderGeometry args={[0.025, 0.025, 2.2, 8]} />
-          <meshStandardMaterial color={COLORS.wormGear} metalness={0.7} roughness={0.2} />
-        </mesh>
-
-        {/* Worm gear slider/carriage */}
-        <group position={[wormX, 0.95, 0]}>
-          <mesh>
-            <boxGeometry args={[0.12, 0.1, 0.08]} />
-            <meshStandardMaterial color={COLORS.slider} metalness={0.5} roughness={0.4} />
+          <mesh position={[0, 0.92, 0.35]}>
+            <boxGeometry args={[2.6, 0.03, 0.06]} />
+            <meshStandardMaterial color={COLORS.chassis} metalness={0.4} roughness={0.5} />
           </mesh>
-          {/* Clevis/attachment point */}
-          <mesh position={[0, 0.08, 0]}>
-            <boxGeometry args={[0.06, 0.08, 0.04]} />
-            <meshStandardMaterial color={COLORS.slider} metalness={0.5} roughness={0.4} />
+
+          <BearingHousing position={[pivotX, 0.94, -0.4]} rotation={[Math.PI / 2, 0, 0]} innerRadius={0.04} outerRadius={0.07} height={0.05} />
+          <BearingHousing position={[pivotX, 0.94, 0.4]} rotation={[Math.PI / 2, 0, 0]} innerRadius={0.04} outerRadius={0.07} height={0.05} />
+
+          <mesh position={[pivotX, PANEL_BASE_Y - 0.06, 0]} rotation={[Math.PI / 2, 0, 0]}>
+            <cylinderGeometry args={[0.045, 0.045, 0.9, 12]} />
+            <meshStandardMaterial color={COLORS.elevationShaft} metalness={0.6} roughness={0.3} />
           </mesh>
+
+          <Motor position={[1.2, 0.85, 0]} radius={0.15} height={0.2} horizontal />
+          <mesh position={[0.05, 0.95, 0]} rotation={[0, 0, Math.PI / 2]}>
+            <cylinderGeometry args={[0.025, 0.025, 2.2, 8]} />
+            <meshStandardMaterial color={COLORS.wormGear} metalness={0.7} roughness={0.2} />
+          </mesh>
+
+          {/* ========== RIGID INVERSE KINEMATICS LINKAGE BLOCK ========== */}
+          {(() => {
+            // 1. FIXED PHYSICAL DIMENSIONS (Natural Kinematics)
+            const L_conn = 0.5;       // Rigid Connector Rod (Lever Tip to Panel)
+            
+            // UPDATED: Shifted chassis anchor backward (pivotX + L_conn)
+            const aX = pivotX + L_conn; 
+            const aY = 0.96; 
+            const sY = 1.07;          // Slider Y level (locked on gear)
+            const pX = midX;          // Moving Panel Pivot
+            const pY = midY;
+
+            const L_main = 1.0;       // Rigid Main Lever
+            
+            // MODIFIED: Shortened the driver rod by half (1.4 -> 0.7)
+            const L_driver = 0.7;     // Rigid Driver Rod (Slider to Lever Midpoint)
+
+            // 2. FIND LEVER TIP (Circle-Circle Intersection)
+            const dx = pX - aX;
+            const dy = pY - aY;
+            let d = Math.sqrt(dx * dx + dy * dy);
+            
+            d = Math.max(Math.abs(L_main - L_conn) + 0.001, Math.min(L_main + L_conn - 0.001, d));
+
+            const a = (L_main * L_main - L_conn * L_conn + d * d) / (2 * d);
+            const h = Math.sqrt(Math.max(0, L_main * L_main - a * a));
+
+            const x2 = aX + (a * dx) / d;
+            const y2 = aY + (a * dy) / d;
+
+            const tipX = x2 + (h * dy) / d;
+            const tipY = y2 - (h * dx) / d;
+
+            // 3. FIND LINKAGE MIDPOINT (Where driver rod attaches)
+            const mainAng = Math.atan2(tipY - aY, tipX - aX);
+            const cX = aX + Math.cos(mainAng) * (L_main * 0.5);
+            const cY = aY + Math.sin(mainAng) * (L_main * 0.5);
+
+            // 4. FIND SLIDER X (Fixed Length Driver Force)
+            let yDiff = sY - cY;
+            yDiff = Math.max(-L_driver + 0.001, Math.min(L_driver - 0.001, yDiff));
+            const sX = cX + Math.sqrt(L_driver * L_driver - yDiff * yDiff);
+
+            // 5. RENDERING ANGLES
+            const driverAng = Math.atan2(cY - sY, cX - sX);
+            const connAng = Math.atan2(pY - tipY, pX - tipX);
+
+            return (
+              <group>
+                <group position={[sX, 0.95, 0]}>
+                  <mesh><boxGeometry args={[0.12, 0.1, 0.08]} /><meshStandardMaterial color={COLORS.slider} /></mesh>
+                  <mesh position={[0, 0.08, 0]}>
+                    <boxGeometry args={[0.06, 0.08, 0.04]} /><meshStandardMaterial color={COLORS.slider} metalness={0.5} roughness={0.4} />
+                  </mesh>
+                </group>
+
+                <mesh position={[(aX + tipX) / 2, (aY + tipY) / 2, 0]} rotation={[0, 0, mainAng - Math.PI / 2]}>
+                  <cylinderGeometry args={[0.025, 0.025, L_main, 12]} />
+                  <meshStandardMaterial color="#d0d0d0" metalness={0.7} roughness={0.2} />
+                </mesh>
+
+                <mesh position={[(tipX + pX) / 2, (tipY + pY) / 2, -0.03]} rotation={[0, 0, connAng - Math.PI / 2]}>
+                  <cylinderGeometry args={[0.018, 0.018, L_conn, 12]} />
+                  <meshStandardMaterial color="#88aacc" metalness={0.8} />
+                </mesh>
+
+                <mesh position={[(sX + cX) / 2, (sY + cY) / 2, 0.03]} rotation={[0, 0, driverAng - Math.PI / 2]}>
+                  <cylinderGeometry args={[0.02, 0.02, L_driver, 12]} />
+                  <meshStandardMaterial color="#e8e8e8" metalness={0.6} roughness={0.3} />
+                </mesh>
+
+                <mesh position={[aX, aY, 0]} rotation={[Math.PI / 2, 0, 0]}><cylinderGeometry args={[0.035, 0.035, 0.12]} /><meshStandardMaterial color={COLORS.bearing} /></mesh>
+                <mesh position={[tipX, tipY, 0]} rotation={[Math.PI / 2, 0, 0]}><cylinderGeometry args={[0.025, 0.025, 0.1]} /><meshStandardMaterial color="#444" /></mesh>
+                <mesh position={[cX, cY, 0]} rotation={[Math.PI / 2, 0, 0]}><cylinderGeometry args={[0.03, 0.03, 0.14]} /><meshStandardMaterial color="#333" /></mesh>
+                <mesh position={[sX, sY, 0.03]} rotation={[Math.PI / 2, 0, 0]}><cylinderGeometry args={[0.03, 0.03, 0.08]} /><meshStandardMaterial color="#333" /></mesh>
+                <mesh position={[pX, pY, -0.03]} rotation={[Math.PI / 2, 0, 0]}><cylinderGeometry args={[0.04, 0.04, 0.1]} /><meshStandardMaterial color="#222" /></mesh>
+              </group>
+            )
+          })()}
+
+          <group position={[pivotX, 0, 0]}>
+            <SolarPanel tilt={tilt} dustLevel={dustLevel} isCleaning={isCleaning} cleaningProgress={cleaningProgress} />
+          </group>
+
+          <LDRSensor position={[topX, topY + 0.03, 0]} intensity={topInt} />
+          <LDRSensor position={[pivotX, PANEL_BASE_Y + 0.03, 0]} intensity={bottomInt} />
+          <LDRSensor position={[midX, midY + 0.03, -0.58]} intensity={leftInt} />
+          <LDRSensor position={[midX, midY + 0.03, 0.58]} intensity={rightInt} />
         </group>
-
-        {/* Push rod from slider to panel mid-point */}
-        {(() => {
-          const rodStartX = wormX
-          const rodStartY = 0.95 + 0.12
-          const rodEndX = midX
-          const rodEndY = midY
-          const rodLength = Math.sqrt((rodEndX - rodStartX) ** 2 + (rodEndY - rodStartY) ** 2)
-          const rodAngle = Math.atan2(rodEndY - rodStartY, rodEndX - rodStartX)
-          const rodMidX = (rodStartX + rodEndX) / 2
-          const rodMidY = (rodStartY + rodEndY) / 2
-
-          return (
-            <mesh position={[rodMidX, rodMidY, 0]} rotation={[0, 0, rodAngle - Math.PI / 2]}>
-              <cylinderGeometry args={[0.02, 0.02, rodLength, 8]} />
-              <meshStandardMaterial color="#e8e8e8" metalness={0.6} roughness={0.3} />
-            </mesh>
-          )
-        })()}
-
-        {/* Cable from worm motor up to panel area */}
-        <Cable start={[1.1, 0.85, 0.1]} end={[0.3, 1.4, 0.3]} color="#333333" />
-
-        {/* Solar Panel Assembly */}
-        <SolarPanel
-          tilt={tilt}
-          dustLevel={dustLevel}
-          isCleaning={isCleaning}
-          cleaningProgress={cleaningProgress}
-        />
-
-        {/* LDR sensors on panel */}
-        <LDRSensor position={[topX, topY + 0.03, 0]} intensity={topInt} />
-        <LDRSensor position={[0, PANEL_BASE_Y + 0.03, 0]} intensity={bottomInt} />
-        <LDRSensor position={[midX, midY + 0.03, -0.58]} intensity={leftInt} />
-        <LDRSensor position={[midX, midY + 0.03, 0.58]} intensity={rightInt} />
       </group>
     </group>
   )
 }
 
-// Animation loop component
 function AnimationController({ state, setState }: {
   state: TrackerState
   setState: React.Dispatch<React.SetStateAction<TrackerState>>
@@ -671,18 +600,13 @@ function AnimationController({ state, setState }: {
     setState(prev => {
       const newState = { ...prev }
 
-      // Auto dust accumulation
       if (!prev.isCleaning) {
         newState.dustLevel = Math.min(100, prev.dustLevel + 0.002)
       }
-
-      // Auto clean trigger at 70%
       if (prev.dustLevel > 70 && !prev.isCleaning) {
         newState.isCleaning = true
         newState.cleaningProgress = 0
       }
-
-      // Cleaning animation
       if (prev.isCleaning) {
         newState.cleaningProgress = prev.cleaningProgress + 0.008
         newState.dustLevel = Math.max(0, prev.dustLevel - 0.8)
@@ -693,7 +617,6 @@ function AnimationController({ state, setState }: {
         }
       }
 
-      // Sun tracking logic (exactly like HTML)
       const tRad = (prev.tilt * Math.PI) / 180
       const sunRadAz = (prev.sunAzimuth * Math.PI) / 180
       const sunRadEl = (prev.sunElevation * Math.PI) / 180
@@ -747,7 +670,6 @@ function AnimationController({ state, setState }: {
         const dot = worldNormal.x * sunDir.x + worldNormal.y * sunDir.y + worldNormal.z * sunDir.z
         let intensity = Math.max(0, dot)
         intensity *= 1 - prev.dustLevel / 150
-
         return intensity
       }
 
@@ -777,7 +699,6 @@ function AnimationController({ state, setState }: {
         newState.targetTilt = 30
       }
 
-      // Smooth movement
       let panError = newState.targetPan - prev.pan
       if (panError > 180) panError -= 360
       if (panError < -180) panError += 360
@@ -788,11 +709,9 @@ function AnimationController({ state, setState }: {
       return newState
     })
   })
-
   return null
 }
 
-// Control Panel UI
 function ControlPanel({ state, setState }: {
   state: TrackerState
   setState: React.Dispatch<React.SetStateAction<TrackerState>>
@@ -807,7 +726,6 @@ function ControlPanel({ state, setState }: {
     setState(s => ({ ...s, dustLevel: Math.min(100, s.dustLevel + 15) }))
   }
 
-  // Calculate LDR voltages for display
   const tRad = (state.tilt * Math.PI) / 180
   const sunRadAz = (state.sunAzimuth * Math.PI) / 180
   const sunRadEl = (state.sunElevation * Math.PI) / 180
@@ -861,7 +779,6 @@ function ControlPanel({ state, setState }: {
     const dot = worldNormal.x * sunDir.x + worldNormal.y * sunDir.y + worldNormal.z * sunDir.z
     let intensity = Math.max(0, dot)
     intensity *= 1 - state.dustLevel / 150
-
     return (intensity * 3.3).toFixed(2)
   }
 
@@ -876,7 +793,6 @@ function ControlPanel({ state, setState }: {
 
   return (
     <div className="absolute right-4 top-4 w-72 space-y-3 font-mono text-xs">
-      {/* Status Panel */}
       <div className="rounded-lg border border-zinc-700 bg-zinc-900/95 p-3 backdrop-blur">
         <h3 className="mb-2 border-b border-zinc-700 pb-1 font-semibold text-zinc-300">System Status</h3>
         <div className="space-y-1 text-zinc-400">
@@ -897,7 +813,6 @@ function ControlPanel({ state, setState }: {
         </div>
       </div>
 
-      {/* Sun Control */}
       <div className="rounded-lg border border-zinc-700 bg-zinc-900/95 p-3 backdrop-blur">
         <h3 className="mb-2 border-b border-zinc-700 pb-1 font-semibold text-zinc-300">Sun Position</h3>
         <div className="space-y-2">
@@ -932,7 +847,6 @@ function ControlPanel({ state, setState }: {
         </div>
       </div>
 
-      {/* LDR Readings */}
       <div className="rounded-lg border border-zinc-700 bg-zinc-900/95 p-3 backdrop-blur">
         <h3 className="mb-2 border-b border-zinc-700 pb-1 font-semibold text-zinc-300">LDR Sensors (V)</h3>
         <div className="grid grid-cols-2 gap-2 text-center">
@@ -955,7 +869,6 @@ function ControlPanel({ state, setState }: {
         </div>
       </div>
 
-      {/* Dust & Cleaning */}
       <div className="rounded-lg border border-zinc-700 bg-zinc-900/95 p-3 backdrop-blur">
         <h3 className="mb-2 border-b border-zinc-700 pb-1 font-semibold text-zinc-300">Cleaning System</h3>
         <div className="mb-2 space-y-1 text-zinc-400">
@@ -994,7 +907,6 @@ function ControlPanel({ state, setState }: {
         </div>
       </div>
 
-      {/* Instructions */}
       <div className="rounded-lg border border-zinc-700 bg-zinc-900/95 p-3 text-center text-zinc-500 backdrop-blur">
         Drag to rotate • Scroll to zoom
       </div>
@@ -1002,7 +914,6 @@ function ControlPanel({ state, setState }: {
   )
 }
 
-// Main Scene Export
 export default function SolarTrackerScene() {
   const [state, setState] = useState<TrackerState>({
     pan: 180,
@@ -1019,18 +930,14 @@ export default function SolarTrackerScene() {
   return (
     <div className="relative h-screen w-full bg-zinc-950">
       <Canvas
-        camera={{ position: [4, 3, 4], fov: 50 }}
+        camera={{ position: [5, 4, 6], fov: 50 }}
         gl={{ antialias: true, powerPreference: "default" }}
         dpr={[1, 1.5]}
       >
-        {/* 1. Change to a soft sky/studio blue background */}
         <color attach="background" args={["#d8e2eb"]} />
-
-        {/* 2. Boost ambient light slightly so the dark metals show their detail */}
         <ambientLight intensity={0.6} />
         <directionalLight position={[10, 15, 10]} intensity={0.8} />
         <directionalLight position={[-5, 10, -5]} intensity={0.3} />
-
         <OrbitControls
           enablePan={true}
           enableZoom={true}
@@ -1040,20 +947,14 @@ export default function SolarTrackerScene() {
           minPolarAngle={0.1}
           maxPolarAngle={Math.PI / 2 - 0.05}
         />
-
         <AnimationController state={state} setState={setState} />
         <SolarTracker3D state={state} />
-
-        {/* 3. Lighten the ground plane to a concrete/light grey */}
         <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.05, 0]}>
           <planeGeometry args={[20, 20]} />
           <meshStandardMaterial color="#cccccc" roughness={0.8} />
         </mesh>
-
-        {/* 4. Adjust the grid helper to contrast against the new light ground */}
         <gridHelper args={[20, 40, "#888888", "#aaaaaa"]} position={[0, -0.04, 0]} />
       </Canvas>
-
       <ControlPanel state={state} setState={setState} />
     </div>
   )
