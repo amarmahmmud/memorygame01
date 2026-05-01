@@ -384,34 +384,34 @@ function SolarTracker3D({ state }: { state: TrackerState }) {
 
     switch (sensorType) {
       case 'top':
-        localNormal = { x: Math.sin(tRad + angleOffset), y: Math.cos(tRad + angleOffset), z: 0 }
+        localNormal = { x: -Math.sin(tRad - angleOffset), y: Math.cos(tRad - angleOffset), z: 0 }
         break
       case 'bottom':
-        localNormal = { x: Math.sin(tRad - angleOffset), y: Math.cos(tRad - angleOffset), z: 0 }
+        localNormal = { x: -Math.sin(tRad + angleOffset), y: Math.cos(tRad + angleOffset), z: 0 }
         break
       case 'left':
         localNormal = {
-          x: Math.sin(tRad) * Math.cos(angleOffset),
+          x: -Math.sin(tRad) * Math.cos(angleOffset),
           y: Math.cos(tRad) * Math.cos(angleOffset),
           z: -Math.sin(angleOffset)
         }
         break
       case 'right':
         localNormal = {
-          x: Math.sin(tRad) * Math.cos(angleOffset),
+          x: -Math.sin(tRad) * Math.cos(angleOffset),
           y: Math.cos(tRad) * Math.cos(angleOffset),
           z: Math.sin(angleOffset)
         }
         break
       default:
-        localNormal = { x: Math.sin(tRad), y: Math.cos(tRad), z: 0 }
+        localNormal = { x: -Math.sin(tRad), y: Math.cos(tRad), z: 0 }
     }
 
     const pRad = (pan * Math.PI) / 180
     const worldNormal = {
-      x: localNormal.x * Math.cos(pRad) - localNormal.z * Math.sin(pRad),
+      x: localNormal.x * Math.cos(pRad) + localNormal.z * Math.sin(pRad),
       y: localNormal.y,
-      z: localNormal.x * Math.sin(pRad) + localNormal.z * Math.cos(pRad)
+      z: -localNormal.x * Math.sin(pRad) + localNormal.z * Math.cos(pRad)
     }
 
     const len = Math.sqrt(worldNormal.x ** 2 + worldNormal.y ** 2 + worldNormal.z ** 2)
@@ -500,22 +500,16 @@ function SolarTracker3D({ state }: { state: TrackerState }) {
 
           {/* ========== RIGID INVERSE KINEMATICS LINKAGE BLOCK ========== */}
           {(() => {
-            // 1. FIXED PHYSICAL DIMENSIONS (Natural Kinematics)
-            const L_conn = 0.5;       // Rigid Connector Rod (Lever Tip to Panel)
-            
-            // UPDATED: Shifted chassis anchor backward (pivotX + L_conn)
+            const L_conn = 0.5;       
             const aX = pivotX + L_conn; 
             const aY = 0.96; 
-            const sY = 1.07;          // Slider Y level (locked on gear)
-            const pX = midX;          // Moving Panel Pivot
+            const sY = 1.07;          
+            const pX = midX;          
             const pY = midY;
 
-            const L_main = 1.0;       // Rigid Main Lever
-            
-            // MODIFIED: Shortened the driver rod by half (1.4 -> 0.7)
-            const L_driver = 0.7;     // Rigid Driver Rod (Slider to Lever Midpoint)
+            const L_main = 1.0;       
+            const L_driver = 0.7;     
 
-            // 2. FIND LEVER TIP (Circle-Circle Intersection)
             const dx = pX - aX;
             const dy = pY - aY;
             let d = Math.sqrt(dx * dx + dy * dy);
@@ -531,17 +525,14 @@ function SolarTracker3D({ state }: { state: TrackerState }) {
             const tipX = x2 + (h * dy) / d;
             const tipY = y2 - (h * dx) / d;
 
-            // 3. FIND LINKAGE MIDPOINT (Where driver rod attaches)
             const mainAng = Math.atan2(tipY - aY, tipX - aX);
             const cX = aX + Math.cos(mainAng) * (L_main * 0.5);
             const cY = aY + Math.sin(mainAng) * (L_main * 0.5);
 
-            // 4. FIND SLIDER X (Fixed Length Driver Force)
             let yDiff = sY - cY;
             yDiff = Math.max(-L_driver + 0.001, Math.min(L_driver - 0.001, yDiff));
             const sX = cX + Math.sqrt(L_driver * L_driver - yDiff * yDiff);
 
-            // 5. RENDERING ANGLES
             const driverAng = Math.atan2(cY - sY, cX - sX);
             const connAng = Math.atan2(pY - tipY, pX - tipX);
 
@@ -632,34 +623,34 @@ function AnimationController({ state, setState }: {
 
         switch (sensorType) {
           case 'top':
-            localNormal = { x: Math.sin(tRad + angleOffset), y: Math.cos(tRad + angleOffset), z: 0 }
+            localNormal = { x: -Math.sin(tRad - angleOffset), y: Math.cos(tRad - angleOffset), z: 0 }
             break
           case 'bottom':
-            localNormal = { x: Math.sin(tRad - angleOffset), y: Math.cos(tRad - angleOffset), z: 0 }
+            localNormal = { x: -Math.sin(tRad + angleOffset), y: Math.cos(tRad + angleOffset), z: 0 }
             break
           case 'left':
             localNormal = {
-              x: Math.sin(tRad) * Math.cos(angleOffset),
+              x: -Math.sin(tRad) * Math.cos(angleOffset),
               y: Math.cos(tRad) * Math.cos(angleOffset),
               z: -Math.sin(angleOffset)
             }
             break
           case 'right':
             localNormal = {
-              x: Math.sin(tRad) * Math.cos(angleOffset),
+              x: -Math.sin(tRad) * Math.cos(angleOffset),
               y: Math.cos(tRad) * Math.cos(angleOffset),
               z: Math.sin(angleOffset)
             }
             break
           default:
-            localNormal = { x: Math.sin(tRad), y: Math.cos(tRad), z: 0 }
+            localNormal = { x: -Math.sin(tRad), y: Math.cos(tRad), z: 0 }
         }
 
         const pRad = (prev.pan * Math.PI) / 180
         const worldNormal = {
-          x: localNormal.x * Math.cos(pRad) - localNormal.z * Math.sin(pRad),
+          x: localNormal.x * Math.cos(pRad) + localNormal.z * Math.sin(pRad),
           y: localNormal.y,
-          z: localNormal.x * Math.sin(pRad) + localNormal.z * Math.cos(pRad)
+          z: -localNormal.x * Math.sin(pRad) + localNormal.z * Math.cos(pRad)
         }
 
         const len = Math.sqrt(worldNormal.x ** 2 + worldNormal.y ** 2 + worldNormal.z ** 2)
@@ -692,7 +683,8 @@ function AnimationController({ state, setState }: {
 
         const tiltDiff = topInt - bottomInt
         if (Math.abs(tiltDiff) > DEADBAND) {
-          newState.targetTilt = Math.max(0, Math.min(80, prev.targetTilt + tiltDiff * 0.4))
+          // Changed to subtract tiltDiff: increasing tilt drops the panel, so tracking upwards requires subtracting
+          newState.targetTilt = Math.max(0, Math.min(80, prev.targetTilt - tiltDiff * 0.4))
         }
       } else {
         newState.targetPan = 180
@@ -741,34 +733,34 @@ function ControlPanel({ state, setState }: {
 
     switch (sensorType) {
       case 'top':
-        localNormal = { x: Math.sin(tRad + angleOffset), y: Math.cos(tRad + angleOffset), z: 0 }
+        localNormal = { x: -Math.sin(tRad - angleOffset), y: Math.cos(tRad - angleOffset), z: 0 }
         break
       case 'bottom':
-        localNormal = { x: Math.sin(tRad - angleOffset), y: Math.cos(tRad - angleOffset), z: 0 }
+        localNormal = { x: -Math.sin(tRad + angleOffset), y: Math.cos(tRad + angleOffset), z: 0 }
         break
       case 'left':
         localNormal = {
-          x: Math.sin(tRad) * Math.cos(angleOffset),
+          x: -Math.sin(tRad) * Math.cos(angleOffset),
           y: Math.cos(tRad) * Math.cos(angleOffset),
           z: -Math.sin(angleOffset)
         }
         break
       case 'right':
         localNormal = {
-          x: Math.sin(tRad) * Math.cos(angleOffset),
+          x: -Math.sin(tRad) * Math.cos(angleOffset),
           y: Math.cos(tRad) * Math.cos(angleOffset),
           z: Math.sin(angleOffset)
         }
         break
       default:
-        localNormal = { x: Math.sin(tRad), y: Math.cos(tRad), z: 0 }
+        localNormal = { x: -Math.sin(tRad), y: Math.cos(tRad), z: 0 }
     }
 
     const pRad = (state.pan * Math.PI) / 180
     const worldNormal = {
-      x: localNormal.x * Math.cos(pRad) - localNormal.z * Math.sin(pRad),
+      x: localNormal.x * Math.cos(pRad) + localNormal.z * Math.sin(pRad),
       y: localNormal.y,
-      z: localNormal.x * Math.sin(pRad) + localNormal.z * Math.cos(pRad)
+      z: -localNormal.x * Math.sin(pRad) + localNormal.z * Math.cos(pRad)
     }
 
     const len = Math.sqrt(worldNormal.x ** 2 + worldNormal.y ** 2 + worldNormal.z ** 2)
