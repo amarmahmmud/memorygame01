@@ -1,9 +1,10 @@
 "use client"
 
-import { Canvas, useFrame } from "@react-three/fiber"
 import { OrbitControls } from "@react-three/drei"
-import { useState, useRef, useMemo, useCallback } from "react"
+import { Canvas, useFrame } from "@react-three/fiber"
+import { useCallback, useEffect, useMemo, useState } from "react"
 import * as THREE from "three"
+import { ESP32Connection } from "./solar-tracker/ESP32Connection"
 
 const PANEL_BASE_Y = 1.05 
 const PANEL_LENGTH = 1.0 
@@ -919,6 +920,39 @@ export default function SolarTrackerScene() {
     cleaningProgress: 0,
   })
 
+  const [esp32Connected, setEsp32Connected] = useState<boolean>(false)
+  const [useESP32, setUseESP32] = useState<boolean>(false)
+
+  // Sync state to ESP32 when it's connected and enabled
+  useEffect(() => {
+    if (useESP32 && esp32Connected) {
+      console.log('ESP32 Sync:', { pan: state.pan, tilt: state.tilt })
+    }
+  }, [state.pan, state.tilt, esp32Connected, useESP32])
+
+  // Handle ESP32 status updates
+  const handleESP32Status = (status: any) => {
+    if (useESP32 && status) {
+      setState(prev => ({
+        ...prev,
+        pan: status.pan || prev.pan,
+        tilt: status.tilt || prev.tilt,
+        isCleaning: status.isCleaning || false,
+        dustLevel: status.dustLevel || prev.dustLevel,
+      }))
+    }
+  }
+
+  // Handle sensor data from ESP32
+  const handleESP32Sensors = (sensors: any) => {
+    if (useESP32 && sensors && sensors.dustLevel !== undefined) {
+      setState(prev => ({
+        ...prev,
+        dustLevel: sensors.dustLevel
+      }))
+    }
+  }
+
   return (
     <div className="relative h-screen w-full bg-zinc-950">
       <Canvas
@@ -947,6 +981,39 @@ export default function SolarTrackerScene() {
         </mesh>
         <gridHelper args={[20, 40, "#888888", "#aaaaaa"]} position={[0, -0.04, 0]} />
       </Canvas>
+      
+      {/* ESP32 Connection Panel */}
+      {useESP32 && (
+        <div className="absolute top-4 left-4 z-30">
+          <ESP32Connection
+            onStatusChange={setEsp32Connected}
+            onSensorData={handleESP32Sensors}
+          />
+        </div>
+      )}
+      
+      {/* ESP32 Toggle */}
+      <div className="absolute top-4 left-4 z-20">
+        <div className="flex items-center gap-2 bg-black/80 backdrop-blur rounded-lg p-2 border border-cyan-400/30">
+          <span className="text-xs text-gray-400">ESP32 Mode</span>
+          <button
+            onClick={() => setUseESP32(!useESP32)}
+            className={`px-3 py-1 rounded text-xs font-bold transition-all ${
+              useESP32
+                ? 'bg-green-600 text-white hover:bg-green-500'
+                : 'bg-gray-700 text-gray-400 hover:bg-gray-600'
+            }`}
+          >
+            {useESP32 ? 'LIVE' : 'SIM'}
+          </button>
+          {useESP32 && (
+            <div className={`w-2 h-2 rounded-full ${
+              esp32Connected ? 'bg-green-400 animate-pulse' : 'bg-red-400'
+            }`} />
+          )}
+        </div>
+      </div>
+      
       <ControlPanel state={state} setState={setState} />
     </div>
   )

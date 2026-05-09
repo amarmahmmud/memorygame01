@@ -1,0 +1,23 @@
+{
+  "name": "solar-tracker-bridge",
+  "version": "1.0.0",
+  "description": "ESP32 Bridge Server for Solar Tracker",
+  "main": "esp32-bridge-server.js",
+  "scripts": {
+    "start": "node esp32-bridge-server.js",
+    "dev": "nodemon esp32-bridge-server.js",
+    "test": "echo \"No tests specified\" && exit 0"
+  },
+  "keywords": ["esp32", "solar-tracker", "iot"],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "cors": "^2.8.5",
+    "express": "^4.18.2",
+    "ws": "^8.14.2",
+    "axios": "^1.6.0"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.0"
+  }
+}
