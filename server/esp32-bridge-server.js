@@ -271,6 +271,21 @@ app.post('/api/esp32/clean', async (req, res) => {
 });
 
 /**
+ * GET /api/esp32/health - Check ESP32 health
+ */
+app.get('/api/esp32/health', async (req, res) => {
+  try {
+    const data = await requestEsp32('GET', '/health');
+    res.json(data);
+  } catch (error) {
+    res.status(503).json({
+      error: 'ESP32 unavailable',
+      message: error.message
+    });
+  }
+});
+
+/**
  * POST /api/esp32/health - Check ESP32 health
  */
 app.post('/api/esp32/health', async (req, res) => {
