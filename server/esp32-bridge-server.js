@@ -332,9 +332,9 @@ app.get('/api/discover', async (req, res) => {
 server.listen(PORT, () => {
   console.log(`\n========================================`);
   console.log(` ESP32 Bridge Server Running`);
-  console(` Port: ${PORT}`);
-  console(` ESP32 Target: ${ESP32_CONFIG.host}:${ESP32_CONFIG.port}`);
-  console(`========================================\n`);
+  console.log(` Port: ${PORT}`);
+  console.log(` ESP32 Target: ${ESP32_CONFIG.host}:${ESP32_CONFIG.port}`);
+  console.log(`========================================\n`);
   
   // Start polling ESP32
   pollEsp32Status();
