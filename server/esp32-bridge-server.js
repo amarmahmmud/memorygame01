@@ -260,7 +260,7 @@ app.post('/api/esp32/motor', async (req, res) => {
  */
 app.post('/api/esp32/clean', async (req, res) => {
   try {
-    const data = await requestEsp32('POST', '/clean', req.body);
+    const data = await requestEsp32('POST', '/clean', { duration: req.body.duration || 5000 });
     res.json(data);
   } catch (error) {
     res.status(503).json({

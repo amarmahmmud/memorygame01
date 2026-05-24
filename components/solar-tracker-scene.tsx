@@ -938,7 +938,8 @@ export default function SolarTrackerScene() {
         pan: status.pan || prev.pan,
         tilt: status.tilt || prev.tilt,
         isCleaning: status.isCleaning || false,
-        cleaningProgress: status.cleaningProgress || 0,
+        // Normalize cleaningProgress from 0-100 (ESP32) to 0-1 (3D scene)
+        cleaningProgress: status.isCleaning ? (status.cleaningProgress || 0) / 100 : 0,
         dustLevel: status.dustLevel || prev.dustLevel,
       }))
     }

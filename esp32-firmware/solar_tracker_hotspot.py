@@ -394,6 +394,25 @@ def handle_request(client_socket, request):
         except Exception as e:
             client_socket.send('HTTP/1.1 400 Bad Request\r\n\r\n' + str(e))
     
+    elif path == '/clean' and method == 'POST':
+        try:
+            body_start = request.index('\r\n\r\n') + 4
+            body = request[body_start:]
+            data = json.loads(body)
+            
+            duration = data.get('duration', 5000)
+            start_cleaning(duration)
+            
+            response_data = {'success': True, 'isCleaning': True}
+            response = json.dumps(response_data)
+            client_socket.send('HTTP/1.1 200 OK\r\n')
+            client_socket.send('Content-Type: application/json\r\n')
+            client_socket.send('Connection: close\r\n')
+            client_socket.send('\r\n')
+            client_socket.send(response)
+        except Exception as e:
+            client_socket.send('HTTP/1.1 400 Bad Request\r\n\r\n' + str(e))
+    
     elif path == '/health' and method == 'GET':
         response = json.dumps({'status': 'ok', 'uptime': time.ticks_ms()})
         client_socket.send('HTTP/1.1 200 OK\r\n')
