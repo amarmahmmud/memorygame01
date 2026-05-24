@@ -585,9 +585,10 @@ function SolarTracker3D({ state }: { state: TrackerState }) {
   )
 }
 
-function AnimationController({ state, setState }: {
+function AnimationController({ state, setState, useESP32 }: {
   state: TrackerState
   setState: React.Dispatch<React.SetStateAction<TrackerState>>
+  useESP32: boolean
 }) {
   useFrame(() => {
     setState(prev => {
@@ -672,33 +673,36 @@ function AnimationController({ state, setState }: {
       const rightInt = getLDRIntensity('right')
       const avgIntensity = (topInt + bottomInt + leftInt + rightInt) / 4
 
-      const LIGHT_THRESHOLD = 0.15
-      const DEADBAND = 0.05
-      const trackingActive = avgIntensity > LIGHT_THRESHOLD
+      // Only run sun tracking in SIM mode (not ESP32 mode)
+      if (!useESP32) {
+        const LIGHT_THRESHOLD = 0.15
+        const DEADBAND = 0.05
+        const trackingActive = avgIntensity > LIGHT_THRESHOLD
 
-      if (trackingActive) {
-        const panDiff = rightInt - leftInt
-        if (Math.abs(panDiff) > DEADBAND) {
-          newState.targetPan = (prev.targetPan + panDiff * 0.8) % 360
-          if (newState.targetPan < 0) newState.targetPan += 360
+        if (trackingActive) {
+          const panDiff = rightInt - leftInt
+          if (Math.abs(panDiff) > DEADBAND) {
+            newState.targetPan = (prev.targetPan + panDiff * 0.8) % 360
+            if (newState.targetPan < 0) newState.targetPan += 360
+          }
+
+          const tiltDiff = topInt - bottomInt
+          if (Math.abs(tiltDiff) > DEADBAND) {
+            // Changed to subtract tiltDiff: increasing tilt drops the panel, so tracking upwards requires subtracting
+            newState.targetTilt = Math.max(0, Math.min(80, prev.targetTilt - tiltDiff * 0.4))
+          }
+        } else {
+          newState.targetPan = 180
+          newState.targetTilt = 30
         }
 
-        const tiltDiff = topInt - bottomInt
-        if (Math.abs(tiltDiff) > DEADBAND) {
-          // Changed to subtract tiltDiff: increasing tilt drops the panel, so tracking upwards requires subtracting
-          newState.targetTilt = Math.max(0, Math.min(80, prev.targetTilt - tiltDiff * 0.4))
-        }
-      } else {
-        newState.targetPan = 180
-        newState.targetTilt = 30
+        let panError = newState.targetPan - prev.pan
+        if (panError > 180) panError -= 360
+        if (panError < -180) panError += 360
+        newState.pan = prev.pan + panError * 0.03
+        newState.tilt = prev.tilt + (newState.targetTilt - prev.tilt) * 0.04
+        newState.pan = ((newState.pan % 360) + 360) % 360
       }
-
-      let panError = newState.targetPan - prev.pan
-      if (panError > 180) panError -= 360
-      if (panError < -180) panError += 360
-      newState.pan = prev.pan + panError * 0.03
-      newState.tilt = prev.tilt + (newState.targetTilt - prev.tilt) * 0.04
-      newState.pan = ((newState.pan % 360) + 360) % 360
 
       return newState
     })
@@ -706,9 +710,10 @@ function AnimationController({ state, setState }: {
   return null
 }
 
-function ControlPanel({ state, setState }: {
+function ControlPanel({ state, setState, useESP32 }: {
   state: TrackerState
   setState: React.Dispatch<React.SetStateAction<TrackerState>>
+  useESP32: boolean
 }) {
   const startManualClean = () => {
     if (!state.isCleaning) {
@@ -825,7 +830,8 @@ function ControlPanel({ state, setState }: {
               max="360"
               value={state.sunAzimuth}
               onChange={(e) => setState(s => ({ ...s, sunAzimuth: Number(e.target.value) }))}
-              className="h-2 w-full cursor-pointer appearance-none rounded-lg bg-zinc-700"
+              disabled={useESP32}
+              className={`h-2 w-full appearance-none rounded-lg bg-zinc-700 ${useESP32 ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
             />
           </div>
           <div>
@@ -839,7 +845,8 @@ function ControlPanel({ state, setState }: {
               max="90"
               value={state.sunElevation}
               onChange={(e) => setState(s => ({ ...s, sunElevation: Number(e.target.value) }))}
-              className="h-2 w-full cursor-pointer appearance-none rounded-lg bg-zinc-700"
+              disabled={useESP32}
+              className={`h-2 w-full appearance-none rounded-lg bg-zinc-700 ${useESP32 ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
             />
           </div>
         </div>
@@ -1045,7 +1052,7 @@ export default function SolarTrackerScene() {
           minPolarAngle={0.1}
           maxPolarAngle={Math.PI / 2 - 0.05}
         />
-        <AnimationController state={state} setState={setState} />
+        <AnimationController state={state} setState={setState} useESP32={useESP32} />
         <SolarTracker3D state={state} />
         <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.05, 0]}>
           <planeGeometry args={[20, 20]} />
@@ -1087,7 +1094,7 @@ export default function SolarTrackerScene() {
         </div>
       </div>
       
-      <ControlPanel state={state} setState={setState} />
+      <ControlPanel state={state} setState={setState} useESP32={useESP32} />
     </div>
   )
 }
