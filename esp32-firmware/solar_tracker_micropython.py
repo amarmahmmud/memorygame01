@@ -70,6 +70,8 @@ ldr_left = 0
 ldr_right = 0
 dust_level = 0
 is_cleaning = False
+cleaning_start_time = 0
+cleaning_duration = 5000  # 5 seconds default
 
 # Timing
 last_motor_move = 0
@@ -122,19 +124,36 @@ def set_tilt(angle):
     target_tilt = max(0, min(80, angle))
 
 def start_cleaning(duration_ms=5000):
-    """Start cleaning cycle"""
-    global is_cleaning
+    """Start cleaning cycle (non-blocking)"""
+    global is_cleaning, cleaning_start_time, cleaning_duration
     is_cleaning = True
+    cleaning_start_time = time.ticks_ms()
+    cleaning_duration = duration_ms
     PIN_CLEANER.value(1)
-    time.sleep_ms(duration_ms)
-    PIN_CLEANER.value(0)
-    is_cleaning = False
+
+def update_cleaning():
+    """Update cleaning state (call in main loop)"""
+    global is_cleaning
+    if is_cleaning:
+        current_time = time.ticks_ms()
+        elapsed = time.ticks_diff(current_time, cleaning_start_time)
+        if elapsed >= cleaning_duration:
+            PIN_CLEANER.value(0)
+            is_cleaning = False
 
 def stop_cleaning():
     """Stop cleaning"""
     global is_cleaning
     is_cleaning = False
     PIN_CLEANER.value(0)
+
+def get_cleaning_progress():
+    """Get cleaning progress (0-100)"""
+    if not is_cleaning:
+        return 0
+    current_time = time.ticks_ms()
+    elapsed = time.ticks_diff(current_time, cleaning_start_time)
+    return min(100, int((elapsed / cleaning_duration) * 100))
 
 # ============================================================
 # SENSOR FUNCTIONS
@@ -294,6 +313,7 @@ def handle_request(client_socket, request):
             'targetTilt': round(target_tilt, 1),
             'dustLevel': dust_level,
             'isCleaning': is_cleaning,
+            'cleaningProgress': get_cleaning_progress(),
             'ldrTop': ldr_top,
             'ldrBottom': ldr_bottom,
             'ldrLeft': ldr_left,
@@ -363,6 +383,31 @@ def handle_request(client_socket, request):
             client_socket.send('\r\n')
             client_socket.send(str(e))
     
+    elif path == '/clean' and method == 'POST':
+        # Start cleaning cycle
+        try:
+            body_start = request.index('\r\n\r\n') + 4
+            body = request[body_start:]
+            data = json.loads(body)
+            duration = data.get('duration', 5000)
+            start_cleaning(duration)
+            
+            response_data = {
+                'success': True,
+                'isCleaning': is_cleaning,
+                'cleaningProgress': get_cleaning_progress()
+            }
+            response = json.dumps(response_data)
+            client_socket.send('HTTP/1.1 200 OK\r\n')
+            client_socket.send('Content-Type: application/json\r\n')
+            client_socket.send('Connection: close\r\n')
+            client_socket.send('\r\n')
+            client_socket.send(response)
+        except Exception as e:
+            client_socket.send('HTTP/1.1 400 Bad Request\r\n')
+            client_socket.send('\r\n')
+            client_socket.send(str(e))
+    
     elif path == '/health' and method == 'GET':
         response_data = {
             'status': 'ok',
@@ -410,6 +455,9 @@ def run_server():
         if time.ticks_diff(current_time, last_motor_move) > 50:  # 20Hz update
             update_motors()
             last_motor_move = current_time
+        
+        # Update cleaning state
+        update_cleaning()
         
         # Read sensors periodically
         if time.ticks_diff(current_time, last_sensor_read) > 2000:  # Every 2 seconds

@@ -938,6 +938,7 @@ export default function SolarTrackerScene() {
         pan: status.pan || prev.pan,
         tilt: status.tilt || prev.tilt,
         isCleaning: status.isCleaning || false,
+        cleaningProgress: status.cleaningProgress || 0,
         dustLevel: status.dustLevel || prev.dustLevel,
       }))
     }
@@ -988,6 +989,7 @@ export default function SolarTrackerScene() {
           <ESP32Connection
             onStatusChange={setEsp32Connected}
             onSensorData={handleESP32Sensors}
+            onStatusData={handleESP32Status}
           />
         </div>
       )}

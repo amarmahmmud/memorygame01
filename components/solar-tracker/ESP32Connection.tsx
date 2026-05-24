@@ -12,6 +12,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 interface ESP32ConnectionProps {
   onStatusChange?: (connected: boolean) => void
   onSensorData?: (data: any) => void
+  onStatusData?: (status: ESP32Status) => void
 }
 
 interface ESP32Status {
@@ -21,6 +22,7 @@ interface ESP32Status {
   targetTilt: number
   dustLevel: number
   isCleaning: boolean
+  cleaningProgress: number
   ldrTop: number
   ldrBottom: number
   ldrLeft: number
@@ -41,7 +43,7 @@ interface SensorData {
   irDust: number
 }
 
-export function ESP32Connection({ onStatusChange, onSensorData }: ESP32ConnectionProps) {
+export function ESP32Connection({ onStatusChange, onSensorData, onStatusData }: ESP32ConnectionProps) {
   const [esp32Host, setEsp32Host] = useState<string>(
     typeof window !== 'undefined' ? localStorage.getItem('esp32_host') || '192.168.1.100' : '192.168.1.100'
   )
@@ -145,11 +147,12 @@ export function ESP32Connection({ onStatusChange, onSensorData }: ESP32Connectio
     try {
       const status = await makeRequest('GET', useBridge ? '/api/esp32/status' : '/status')
       setEsp32Status(status)
+      onStatusData?.(status)
     } catch (err) {
       // Connection lost
       disconnect()
     }
-  }, [isConnected, useBridge, makeRequest, disconnect])
+  }, [isConnected, useBridge, makeRequest, disconnect, onStatusData])
 
   // Fetch sensors
   const fetchSensors = useCallback(async () => {
