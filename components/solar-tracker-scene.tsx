@@ -599,9 +599,15 @@ function AnimationController({ state, setState, useESP32 }: {
     setState(prev => {
       const newState = { ...prev }
 
-      if (!prev.isCleaning) {
-        newState.dustLevel = Math.min(100, prev.dustLevel + 0.002)
+      // Dust level behavior depends on mode:
+      // SIM mode: Slow simulated dust accumulation
+      // LIVE mode: Use real IR sensor data from ESP32 (no simulation)
+      if (!useESP32 && !prev.isCleaning) {
+        // SIM mode: Very slow dust accumulation (0.0005 per frame instead of 0.002)
+        newState.dustLevel = Math.min(100, prev.dustLevel + 0.0005)
       }
+      // In LIVE mode, dustLevel comes from WebSocket (IR sensor data)
+
       if (prev.autoCleaning && prev.dustLevel > 70 && !prev.isCleaning) {
         newState.isCleaning = true
         newState.cleaningProgress = 0
@@ -886,13 +892,20 @@ function ControlPanel({ state, setState, useESP32 }: {
       </div>
 
       <div className="rounded-lg border border-zinc-700 bg-zinc-900/95 p-3 backdrop-blur">
-        <h3 className="mb-2 border-b border-zinc-700 pb-1 font-semibold text-zinc-300">Cleaning System</h3>
+        <h3 className="mb-2 border-b border-zinc-700 pb-1 font-semibold text-zinc-300">
+          Cleaning System
+          {useESP32 && <span className="ml-2 rounded bg-blue-600 px-1.5 py-0.5 text-[10px] text-white">LIVE</span>}
+          {!useESP32 && <span className="ml-2 rounded bg-purple-600 px-1.5 py-0.5 text-[10px] text-white">SIM</span>}
+        </h3>
         <div className="mb-2 space-y-1 text-zinc-400">
           <div className="flex justify-between">
             <span>Dust Level:</span>
             <span className={state.dustLevel > 70 ? "text-red-400" : state.dustLevel > 40 ? "text-yellow-400" : "text-green-400"}>
               {state.dustLevel.toFixed(1)}%
             </span>
+          </div>
+          <div className="text-[10px] text-zinc-500">
+            {useESP32 ? "Source: IR Dust Sensor (Real)" : "Source: Simulated"}
           </div>
           <div className="h-2 overflow-hidden rounded-full bg-zinc-700">
             <div
@@ -921,6 +934,16 @@ function ControlPanel({ state, setState, useESP32 }: {
             Auto: {state.autoCleaning ? "ON" : "OFF"}
           </button>
         </div>
+        {/* Add Dust button - only visible in SIM mode */}
+        {!useESP32 && (
+          <button
+            onClick={simulateDust}
+            disabled={state.isCleaning}
+            className="mt-2 w-full rounded bg-amber-700 px-2 py-1.5 text-white transition hover:bg-amber-600 disabled:opacity-50"
+          >
+            Add Dust (+15%)
+          </button>
+        )}
       </div>
 
       <div className="rounded-lg border border-zinc-700 bg-zinc-900/95 p-3 text-center text-zinc-500 backdrop-blur">
