@@ -44,6 +44,11 @@ interface TrackerState {
   isCleaning: boolean
   cleaningProgress: number
   autoCleaning: boolean
+  // Real sensor data from ESP32
+  ldrTop: number
+  ldrBottom: number
+  ldrLeft: number
+  ldrRight: number
 }
 
 function Bolt({ position, rotation = [0, 0, 0] as [number, number, number], scale = 1 }: {
@@ -620,6 +625,7 @@ function AnimationController({ state, setState, useESP32 }: {
         z: Math.cos(sunRadEl) * Math.cos(sunRadAz)
       }
 
+      // Helper function to calculate simulated LDR intensity based on sun position
       const getLDRIntensity = (sensorType: string) => {
         const angleOffset = (30 * Math.PI) / 180
         let localNormal: { x: number; y: number; z: number }
@@ -667,10 +673,15 @@ function AnimationController({ state, setState, useESP32 }: {
         return intensity
       }
 
-      const topInt = getLDRIntensity('top')
-      const bottomInt = getLDRIntensity('bottom')
-      const leftInt = getLDRIntensity('left')
-      const rightInt = getLDRIntensity('right')
+      // In ESP32 mode, use real LDR sensor data normalized to 0-1 range
+      // LDR values from ESP32 are 0-4095 (12-bit ADC)
+      const normalizeLDR = (rawValue: number) => rawValue / 4095
+
+      const topInt = useESP32 ? normalizeLDR(prev.ldrTop) : getLDRIntensity('top')
+      const bottomInt = useESP32 ? normalizeLDR(prev.ldrBottom) : getLDRIntensity('bottom')
+      const leftInt = useESP32 ? normalizeLDR(prev.ldrLeft) : getLDRIntensity('left')
+      const rightInt = useESP32 ? normalizeLDR(prev.ldrRight) : getLDRIntensity('right')
+
       const avgIntensity = (topInt + bottomInt + leftInt + rightInt) / 4
 
       // Only run sun tracking in SIM mode (not ESP32 mode)
@@ -931,6 +942,10 @@ export default function SolarTrackerScene() {
     isCleaning: false,
     cleaningProgress: 0,
     autoCleaning: true,
+    ldrTop: 0,
+    ldrBottom: 0,
+    ldrLeft: 0,
+    ldrRight: 0,
   })
 
   const [esp32Connected, setEsp32Connected] = useState<boolean>(false)
@@ -961,16 +976,24 @@ export default function SolarTrackerScene() {
       ws.onmessage = (event) => {
         try {
           const message = JSON.parse(event.data)
-          if (message.type === 'status_update' && message.data) {
-            const status = message.data
+          if (message.data) {
+            const data = message.data
+            // Handle both status_update and sensors_update messages
             setState(prev => ({
               ...prev,
-              pan: status.pan !== undefined ? status.pan : prev.pan,
-              tilt: status.tilt !== undefined ? status.tilt : prev.tilt,
-              isCleaning: status.isCleaning || false,
+              // Position data (from status_update)
+              pan: data.pan !== undefined ? data.pan : prev.pan,
+              tilt: data.tilt !== undefined ? data.tilt : prev.tilt,
+              isCleaning: data.isCleaning !== undefined ? data.isCleaning : prev.isCleaning,
               // Normalize cleaningProgress from 0-100 (ESP32) to 0-1 (3D scene)
-              cleaningProgress: status.isCleaning ? (status.cleaningProgress || 0) / 100 : 0,
-              dustLevel: status.dustLevel !== undefined ? status.dustLevel : prev.dustLevel,
+              cleaningProgress: data.isCleaning ? (data.cleaningProgress || 0) / 100 : prev.cleaningProgress,
+              // Use real dust level from IR dust sensor (ESP32 returns 0-100)
+              dustLevel: data.dustLevel !== undefined ? data.dustLevel : prev.dustLevel,
+              // Real LDR sensor data from ESP32
+              ldrTop: data.ldrTop !== undefined ? data.ldrTop : prev.ldrTop,
+              ldrBottom: data.ldrBottom !== undefined ? data.ldrBottom : prev.ldrBottom,
+              ldrLeft: data.ldrLeft !== undefined ? data.ldrLeft : prev.ldrLeft,
+              ldrRight: data.ldrRight !== undefined ? data.ldrRight : prev.ldrRight,
             }))
           }
         } catch (e) {
