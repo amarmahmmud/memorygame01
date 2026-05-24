@@ -67,9 +67,13 @@ ldr_left = 0
 ldr_right = 0
 dust_level = 0
 is_cleaning = False
+cleaning_progress = 0.0
+cleaning_start_time = 0
+cleaning_duration = 5000
 
 last_motor_move = 0
 last_sensor_read = 0
+cleaning_timer = 0
 
 # ============================================================
 # MOTOR FUNCTIONS
@@ -93,12 +97,12 @@ def set_tilt(angle):
     target_tilt = max(0, min(80, angle))
 
 def start_cleaning(duration_ms=5000):
-    global is_cleaning
-    is_cleaning = True
-    PIN_CLEANER.value(1)
-    time.sleep_ms(duration_ms)
-    PIN_CLEANER.value(0)
-    is_cleaning = False
+     global is_cleaning, cleaning_progress, cleaning_start_time, cleaning_duration
+     is_cleaning = True
+     cleaning_progress = 0.0
+     cleaning_start_time = time.ticks_ms()
+     cleaning_duration = duration_ms
+     PIN_CLEANER.value(1)
 
 def stop_cleaning():
     global is_cleaning
@@ -322,19 +326,20 @@ def handle_request(client_socket, request):
         client_socket.send('\r\n')
         client_socket.send(HTML_PAGE)
     
-    elif path == '/status' and method == 'GET':
-        response_data = {
-            'pan': round(current_pan, 1),
-            'tilt': round(current_tilt, 1),
-            'targetPan': round(target_pan, 1),
-            'targetTilt': round(target_tilt, 1),
-            'dustLevel': dust_level,
-            'isCleaning': is_cleaning,
-            'ldrTop': ldr_top,
-            'ldrBottom': ldr_bottom,
-            'ldrLeft': ldr_left,
-            'ldrRight': ldr_right
-        }
+     elif path == '/status' and method == 'GET':
+         response_data = {
+             'pan': round(current_pan, 1),
+             'tilt': round(current_tilt, 1),
+             'targetPan': round(target_pan, 1),
+             'targetTilt': round(target_tilt, 1),
+             'dustLevel': dust_level,
+             'isCleaning': is_cleaning,
+             'cleaningProgress': round(cleaning_progress, 1),
+             'ldrTop': ldr_top,
+             'ldrBottom': ldr_bottom,
+             'ldrLeft': ldr_left,
+             'ldrRight': ldr_right
+         }
         response = json.dumps(response_data)
         client_socket.send('HTTP/1.1 200 OK\r\n')
         client_socket.send('Content-Type: application/json\r\n')
@@ -412,24 +417,33 @@ def run_server():
     
     global last_motor_move, last_sensor_read
     
-    while True:
-        try:
-            server_socket.settimeout(0.1)
-            client_socket, addr = server_socket.accept()
-            request = client_socket.recv(1024).decode('utf-8')
-            handle_request(client_socket, request)
-        except OSError:
-            pass
-        
-        current_time = time.ticks_ms()
-        if time.ticks_diff(current_time, last_motor_move) > 50:
-            update_motors()
-            last_motor_move = current_time
-        
-        if time.ticks_diff(current_time, last_sensor_read) > 2000:
-            read_sensors()
-            auto_track()
-            last_sensor_read = current_time
+     while True:
+         try:
+             server_socket.settimeout(0.1)
+             client_socket, addr = server_socket.accept()
+             request = client_socket.recv(1024).decode('utf-8')
+             handle_request(client_socket, request)
+         except OSError:
+             pass
+         
+         current_time = time.ticks_ms()
+         if time.ticks_diff(current_time, last_motor_move) > 50:
+             update_motors()
+             last_motor_move = current_time
+         
+         if time.ticks_diff(current_time, last_sensor_read) > 2000:
+             read_sensors()
+             auto_track()
+             last_sensor_read = current_time
+             
+         # Update cleaning progress
+         if is_cleaning:
+             elapsed = time.ticks_diff(current_time, cleaning_start_time)
+             if elapsed >= cleaning_duration:
+                 cleaning_progress = 100.0
+                 stop_cleaning()
+             else:
+                 cleaning_progress = (elapsed / cleaning_duration) * 100.0
 
 # ============================================================
 # MAIN
