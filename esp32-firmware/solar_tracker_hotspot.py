@@ -319,13 +319,13 @@ def handle_request(client_socket, request):
     except:
         return
     
-    if path == '/' or path == '/index.html':
-        client_socket.send('HTTP/1.1 200 OK\r\n')
-        client_socket.send('Content-Type: text/html\r\n')
-        client_socket.send('Connection: close\r\n')
-        client_socket.send('\r\n')
-        client_socket.send(HTML_PAGE)
-    
+     if path == '/' or path == '/index.html':
+         client_socket.send('HTTP/1.1 200 OK\r\n')
+         client_socket.send('Content-Type: text/html\r\n')
+         client_socket.send('Connection: close\r\n')
+         client_socket.send('\r\n')
+         client_socket.send(HTML_PAGE)
+     
      elif path == '/status' and method == 'GET':
          response_data = {
              'pan': round(current_pan, 1),
