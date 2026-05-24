@@ -938,7 +938,8 @@ export default function SolarTrackerScene() {
     }
 
     const connectWebSocket = () => {
-      const wsUrl = bridgeUrl.replace('http', 'ws')
+      const wsUrl = bridgeUrl.replace(/^http/, 'ws')
+      console.log('Connecting to WebSocket:', wsUrl)
       const ws = new WebSocket(`${wsUrl}`)
       
       ws.onopen = () => {
@@ -950,6 +951,11 @@ export default function SolarTrackerScene() {
           const message = JSON.parse(event.data)
           if (message.type === 'status_update' && message.data) {
             const status = message.data
+            // Skip if ESP32 is not connected
+            if (status.connected === false) {
+              console.log('ESP32 not connected:', status.error)
+              return
+            }
             setState(prev => ({
               ...prev,
               pan: status.pan !== undefined ? status.pan : prev.pan,
