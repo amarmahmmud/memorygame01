@@ -2,7 +2,7 @@
 
 import { OrbitControls } from "@react-three/drei"
 import { Canvas, useFrame } from "@react-three/fiber"
-import { useCallback, useEffect, useMemo, useState } from "react"
+import { useCallback, useEffect, useMemo, useState, useRef } from "react"
 import * as THREE from "three"
 import { ESP32Connection } from "./solar-tracker/ESP32Connection"
 
@@ -922,6 +922,70 @@ export default function SolarTrackerScene() {
 
   const [esp32Connected, setEsp32Connected] = useState<boolean>(false)
   const [useESP32, setUseESP32] = useState<boolean>(false)
+  const [bridgeUrl, setBridgeUrl] = useState<string>(
+    typeof window !== 'undefined' ? localStorage.getItem('bridge_url') || 'http://localhost:3001' : 'http://localhost:3001'
+  )
+  const wsRef = useRef<WebSocket | null>(null)
+
+  // WebSocket connection for real-time updates from bridge server
+  useEffect(() => {
+    if (!useESP32) {
+      if (wsRef.current) {
+        wsRef.current.close()
+        wsRef.current = null
+      }
+      return
+    }
+
+    const connectWebSocket = () => {
+      const wsUrl = bridgeUrl.replace('http', 'ws')
+      const ws = new WebSocket(`${wsUrl}`)
+      
+      ws.onopen = () => {
+        console.log('WebSocket connected to bridge server')
+      }
+      
+      ws.onmessage = (event) => {
+        try {
+          const message = JSON.parse(event.data)
+          if (message.type === 'status_update' && message.data) {
+            const status = message.data
+            setState(prev => ({
+              ...prev,
+              pan: status.pan !== undefined ? status.pan : prev.pan,
+              tilt: status.tilt !== undefined ? status.tilt : prev.tilt,
+              isCleaning: status.isCleaning || false,
+              // Normalize cleaningProgress from 0-100 (ESP32) to 0-1 (3D scene)
+              cleaningProgress: status.isCleaning ? (status.cleaningProgress || 0) / 100 : 0,
+              dustLevel: status.dustLevel !== undefined ? status.dustLevel : prev.dustLevel,
+            }))
+          }
+        } catch (e) {
+          console.error('WebSocket message parse error:', e)
+        }
+      }
+      
+      ws.onerror = (error) => {
+        console.error('WebSocket error:', error)
+      }
+      
+      ws.onclose = () => {
+        console.log('WebSocket disconnected, attempting reconnect...')
+        setTimeout(connectWebSocket, 3000)
+      }
+      
+      wsRef.current = ws
+    }
+
+    connectWebSocket()
+
+    return () => {
+      if (wsRef.current) {
+        wsRef.current.close()
+        wsRef.current = null
+      }
+    }
+  }, [useESP32, bridgeUrl])
 
   // Sync state to ESP32 when it's connected and enabled
   useEffect(() => {

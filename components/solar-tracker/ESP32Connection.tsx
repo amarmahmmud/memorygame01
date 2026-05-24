@@ -45,7 +45,7 @@ interface SensorData {
 
 export function ESP32Connection({ onStatusChange, onSensorData, onStatusData }: ESP32ConnectionProps) {
   const [esp32Host, setEsp32Host] = useState<string>(
-    typeof window !== 'undefined' ? localStorage.getItem('esp32_host') || '192.168.1.100' : '192.168.1.100'
+    typeof window !== 'undefined' ? localStorage.getItem('esp32_host') || '192.168.4.1' : '192.168.4.1'
   )
   const [esp32Port, setEsp32Port] = useState<string>(
     typeof window !== 'undefined' ? localStorage.getItem('esp32_port') || '80' : '80'
@@ -266,7 +266,7 @@ export function ESP32Connection({ onStatusChange, onSensorData, onStatusData }: 
                     <Input
                       value={esp32Host}
                       onChange={(e) => setEsp32Host(e.target.value)}
-                      placeholder="192.168.1.100"
+                      placeholder="192.168.4.1"
                       className="font-mono text-sm"
                     />
                   </div>

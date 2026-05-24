@@ -75,6 +75,9 @@ last_motor_move = 0
 last_sensor_read = 0
 cleaning_timer = 0
 
+# Hotspot interface (global for access in handle_request)
+ap = None
+
 # ============================================================
 # MOTOR FUNCTIONS
 # ============================================================
@@ -300,6 +303,7 @@ HTML_PAGE = """<!DOCTYPE html>
 
 def start_hotspot():
     """Create WiFi hotspot"""
+    global ap
     ap = network.WLAN(network.AP_IF)
     ap.active(True)
     ap.config(essid=HOTSPOT_SSID, password=HOTSPOT_PASS)
@@ -338,7 +342,8 @@ def handle_request(client_socket, request):
             'ldrTop': ldr_top,
             'ldrBottom': ldr_bottom,
             'ldrLeft': ldr_left,
-            'ldrRight': ldr_right
+            'ldrRight': ldr_right,
+            'ip': ap.ifconfig()[0] if ap else '192.168.4.1'
         }
         response = json.dumps(response_data)
         client_socket.send('HTTP/1.1 200 OK\r\n')
