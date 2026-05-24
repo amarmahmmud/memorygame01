@@ -43,6 +43,7 @@ interface TrackerState {
   dustLevel: number
   isCleaning: boolean
   cleaningProgress: number
+  autoCleaning: boolean
 }
 
 function Bolt({ position, rotation = [0, 0, 0] as [number, number, number], scale = 1 }: {
@@ -595,7 +596,7 @@ function AnimationController({ state, setState }: {
       if (!prev.isCleaning) {
         newState.dustLevel = Math.min(100, prev.dustLevel + 0.002)
       }
-      if (prev.dustLevel > 70 && !prev.isCleaning) {
+      if (prev.autoCleaning && prev.dustLevel > 70 && !prev.isCleaning) {
         newState.isCleaning = true
         newState.cleaningProgress = 0
       }
@@ -713,6 +714,10 @@ function ControlPanel({ state, setState }: {
     if (!state.isCleaning) {
       setState(s => ({ ...s, isCleaning: true, cleaningProgress: 0 }))
     }
+  }
+
+  const toggleAutoCleaning = () => {
+    setState(s => ({ ...s, autoCleaning: !s.autoCleaning }))
   }
 
   const simulateDust = () => {
@@ -892,10 +897,10 @@ function ControlPanel({ state, setState }: {
             {state.isCleaning ? "Cleaning..." : "Clean Now"}
           </button>
           <button
-            onClick={simulateDust}
-            className="flex-1 rounded bg-amber-600 px-2 py-1.5 text-white transition hover:bg-amber-500"
+            onClick={toggleAutoCleaning}
+            className={`flex-1 rounded px-2 py-1.5 text-white transition ${state.autoCleaning ? "bg-green-600 hover:bg-green-500" : "bg-gray-600 hover:bg-gray-500"}`}
           >
-            Add Dust
+            Auto: {state.autoCleaning ? "ON" : "OFF"}
           </button>
         </div>
       </div>
@@ -918,6 +923,7 @@ export default function SolarTrackerScene() {
     dustLevel: 15,
     isCleaning: false,
     cleaningProgress: 0,
+    autoCleaning: true,
   })
 
   const [esp32Connected, setEsp32Connected] = useState<boolean>(false)
