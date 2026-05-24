@@ -1002,22 +1002,36 @@ export default function SolarTrackerScene() {
           if (message.data) {
             const data = message.data
             // Handle both status_update and sensors_update messages
-            setState(prev => ({
-              ...prev,
-              // Position data (from status_update)
-              pan: data.pan !== undefined ? data.pan : prev.pan,
-              tilt: data.tilt !== undefined ? data.tilt : prev.tilt,
-              isCleaning: data.isCleaning !== undefined ? data.isCleaning : prev.isCleaning,
-              // Normalize cleaningProgress from 0-100 (ESP32) to 0-1 (3D scene)
-              cleaningProgress: data.isCleaning ? (data.cleaningProgress || 0) / 100 : prev.cleaningProgress,
-              // Use real dust level from IR dust sensor (ESP32 returns 0-100)
-              dustLevel: data.dustLevel !== undefined ? data.dustLevel : prev.dustLevel,
-              // Real LDR sensor data from ESP32
-              ldrTop: data.ldrTop !== undefined ? data.ldrTop : prev.ldrTop,
-              ldrBottom: data.ldrBottom !== undefined ? data.ldrBottom : prev.ldrBottom,
-              ldrLeft: data.ldrLeft !== undefined ? data.ldrLeft : prev.ldrLeft,
-              ldrRight: data.ldrRight !== undefined ? data.ldrRight : prev.ldrRight,
-            }))
+            setState(prev => {
+              // Calculate smoothed dust level for LIVE mode
+              // ESP32 IR sensor returns 0 or 100, so we smooth the transition
+              let newDustLevel = prev.dustLevel
+              if (data.dustLevel !== undefined) {
+                const targetDust = data.dustLevel
+                // Smooth the transition: move 5% towards target per update
+                // This prevents sudden jumps from 0 to 100
+                const smoothingFactor = 0.05
+                newDustLevel = prev.dustLevel + (targetDust - prev.dustLevel) * smoothingFactor
+                newDustLevel = Math.max(0, Math.min(100, newDustLevel))
+              }
+
+              return {
+                ...prev,
+                // Position data (from status_update)
+                pan: data.pan !== undefined ? data.pan : prev.pan,
+                tilt: data.tilt !== undefined ? data.tilt : prev.tilt,
+                isCleaning: data.isCleaning !== undefined ? data.isCleaning : prev.isCleaning,
+                // Normalize cleaningProgress from 0-100 (ESP32) to 0-1 (3D scene)
+                cleaningProgress: data.isCleaning ? (data.cleaningProgress || 0) / 100 : prev.cleaningProgress,
+                // Use smoothed real dust level from IR dust sensor
+                dustLevel: newDustLevel,
+                // Real LDR sensor data from ESP32
+                ldrTop: data.ldrTop !== undefined ? data.ldrTop : prev.ldrTop,
+                ldrBottom: data.ldrBottom !== undefined ? data.ldrBottom : prev.ldrBottom,
+                ldrLeft: data.ldrLeft !== undefined ? data.ldrLeft : prev.ldrLeft,
+                ldrRight: data.ldrRight !== undefined ? data.ldrRight : prev.ldrRight,
+              }
+            })
           }
         } catch (e) {
           console.error('WebSocket message parse error:', e)
