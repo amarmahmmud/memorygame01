@@ -249,9 +249,11 @@ function SolarPanel({ tilt, dustLevel, isCleaning, cleaningProgress }: {
   const extX = Math.cos(tRad) * (-pL * 0.5)
   const extY = Math.sin(tRad) * (-pL * 0.5)
 
-  const bTravel = isCleaning ? cleaningProgress * 2 : 0
-  const bX = Math.cos(tRad) * (pL * bTravel)
-  const bY = Math.sin(tRad) * (pL * bTravel)
+  // Brush travels from bottom (extX = -0.5 * pL) to top (topX = 2.0 * pL)
+  // Total panel length = 2.5 * pL
+  const brushOffset = isCleaning ? (-0.5 + cleaningProgress * 2.5) : -0.5
+  const bX = Math.cos(tRad) * (pL * brushOffset)
+  const bY = Math.sin(tRad) * (pL * brushOffset)
 
   return (
     <group position={[0, PANEL_BASE_Y, 0]}>
@@ -746,6 +748,10 @@ function ControlPanel({ state, setState, useESP32 }: {
     setState(s => ({ ...s, dustLevel: Math.min(100, s.dustLevel + 15) }))
   }
 
+  const goHome = () => {
+    setState(s => ({ ...s, targetPan: 180, targetTilt: 30 }))
+  }
+
   const tRad = (state.tilt * Math.PI) / 180
   const sunRadAz = (state.sunAzimuth * Math.PI) / 180
   const sunRadEl = (state.sunElevation * Math.PI) / 180
@@ -934,15 +940,23 @@ function ControlPanel({ state, setState, useESP32 }: {
             Auto: {state.autoCleaning ? "ON" : "OFF"}
           </button>
         </div>
-        {/* Add Dust button - only visible in SIM mode */}
+        {/* SIM mode only buttons */}
         {!useESP32 && (
-          <button
-            onClick={simulateDust}
-            disabled={state.isCleaning}
-            className="mt-2 w-full rounded bg-amber-700 px-2 py-1.5 text-white transition hover:bg-amber-600 disabled:opacity-50"
-          >
-            Add Dust (+15%)
-          </button>
+          <div className="mt-2 flex gap-2">
+            <button
+              onClick={goHome}
+              className="flex-1 rounded bg-indigo-600 px-2 py-1.5 text-white transition hover:bg-indigo-500"
+            >
+              Go Home
+            </button>
+            <button
+              onClick={simulateDust}
+              disabled={state.isCleaning}
+              className="flex-1 rounded bg-amber-700 px-2 py-1.5 text-white transition hover:bg-amber-600 disabled:opacity-50"
+            >
+              Add Dust (+15%)
+            </button>
+          </div>
         )}
       </div>
 
