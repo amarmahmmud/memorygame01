@@ -249,9 +249,9 @@ function SolarPanel({ tilt, dustLevel, isCleaning, cleaningProgress }: {
   const extX = Math.cos(tRad) * (-pL * 0.5)
   const extY = Math.sin(tRad) * (-pL * 0.5)
 
-  // Brush travels from bottom (extX = -0.5 * pL) to top (topX = 2.0 * pL)
-  // Total panel length = 2.5 * pL
-  const brushOffset = isCleaning ? (-0.5 + cleaningProgress * 2.5) : -0.5
+  // Brush travels from bottom LDR (pivotX = 0) to top LDR (topX = 2.0 * pL)
+  // Total travel = 2.0 * pL
+  const brushOffset = isCleaning ? (cleaningProgress * 2.0) : 0
   const bX = Math.cos(tRad) * (pL * brushOffset)
   const bY = Math.sin(tRad) * (pL * brushOffset)
 
